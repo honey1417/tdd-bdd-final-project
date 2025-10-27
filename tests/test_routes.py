@@ -165,7 +165,14 @@ class TestProductRoutes(TestCase):
 
     #
     # ADD YOUR TEST CASES HERE
-    #
+    def test_get_product(self):
+        """It should Get a single Product"""
+        # get the id of a product
+        test_product = self._create_products(1)[0]
+        response = self.client.get(f"{BASE_URL}/{test_product.id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(data["name"], test_product.name)
 
     ######################################################################
     # Utility functions
@@ -178,3 +185,44 @@ class TestProductRoutes(TestCase):
         data = response.get_json()
         # logging.debug("data = %s", data)
         return len(data)
+
+    def test_method_not_allowed(self):
+        """It should not allow invalid methods on /products"""
+        response = self.client.put(BASE_URL)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_delete_product_not_found(self):
+        """It should return 404 when deleting non-existent product"""
+        response = self.client.delete(f"{BASE_URL}/0")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_get_product_not_found(self):
+        """It should return 404 when product is not found"""
+        response = self.client.get(f"{BASE_URL}/0")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    
+    def test_create_product_with_wrong_content_type(self):
+        """It should return 415 UNSUPPORTED_MEDIA_TYPE when sending wrong Content-Type"""
+        response = self.client.post(BASE_URL, data="bad data", content_type="text/plain")
+        self.assertEqual(response.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+
+    def test_query_products_by_name(self):
+        """It should filter products by name"""
+        product = self._create_products(1)[0]
+        response = self.client.get(f"{BASE_URL}?name={product.name}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertTrue(len(data) > 0)
+
+    def test_query_products_by_category(self):
+        """It should filter products by category"""
+        product = self._create_products(1)[0]
+        response = self.client.get(f"{BASE_URL}?category={product.category.name}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+    def test_query_products_by_availability(self):
+        """It should filter products by availability"""
+        self._create_products(2)
+        response = self.client.get(f"{BASE_URL}?available=true")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
